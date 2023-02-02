@@ -1,0 +1,381 @@
+[
+    {
+        "id": "5a98141468efda31",
+        "type": "template",
+        "z": "08bebb73069e0e5d",
+        "name": "",
+        "field": "template",
+        "fieldType": "msg",
+        "format": "handlebars",
+        "syntax": "mustache",
+        "template": "{{#payload}}\nWHA-LKB\nMessage : {{text}}\n{{/payload}}",
+        "output": "str",
+        "x": 820,
+        "y": 380,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "381ba1224f455121",
+        "type": "function",
+        "z": "08bebb73069e0e5d",
+        "name": "KPN",
+        "func": "let TimeAlarm = {};\nlet d = new Date();\nlet date = ('00' + d.getDate()).slice(-2) + \"-\" + ('00' + (d.getMonth()+1)).slice(-2) +\"-\" + d.getFullYear() + \" \" + ('00' + d.getHours()).slice(-2) + \":\" + ('00' + d.getMinutes()).slice(-2);\n\nfor(let [key,value] of Object.entries(msg.payload)){\n    TimeAlarm[`${key}_${msg.input.unitId}`] = {\n        DateTime : date,\n        mili : d.getTime()\n    }\n}\n\nflow.set(\"data_\" + msg.input.unitId, msg.payload);\nflow.set(\"TimeAlarm\" + msg.input.unitId, TimeAlarm);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 310,
+        "y": 260,
+        "wires": [
+            [
+                "eb3f206416deaef5"
+            ]
+        ]
+    },
+    {
+        "id": "e5635bc9323feee8",
+        "type": "template",
+        "z": "08bebb73069e0e5d",
+        "name": "",
+        "field": "template",
+        "fieldType": "msg",
+        "format": "handlebars",
+        "syntax": "mustache",
+        "template": "{{#ActiveShow}}\nWHA-KPN\n{{#Active}}\nMessage:เปิดระบบเทสนานเกิน1ชม.\n{{/Active}}\n{{/ActiveShow}}\n{{#NewAlarmShow}}\nWHA-KPN\n{{#NewAlarm}}\n🆘 {{label}}\n{{/NewAlarm}}\n{{/NewAlarmShow}}\n{{#StopShow}}\nWHA-KPN\n{{#Stop}}\n✅ {{label}} \nDuration Time ({{mili}})\n{{/Stop}}\n{{/StopShow}}\n{{#NewConnectedShow}}\n{{#NewConnected}}\nWHA-KPN\nMessage:{{{message}}}\n{{/NewConnected}}\n{{/NewConnectedShow}}\n{{#AliveShow}}\nWHA-KPN\n{{#Alive}}\nMessage:ระบบทำงานปกติ\n{{/Alive}}\n{{/AliveShow}}",
+        "output": "str",
+        "x": 640,
+        "y": 260,
+        "wires": [
+            [
+                "ebe314768d4514dd"
+            ]
+        ]
+    },
+    {
+        "id": "d57b0613261645ed",
+        "type": "modbus-read",
+        "z": "08bebb73069e0e5d",
+        "name": "",
+        "topic": "",
+        "showStatusActivities": false,
+        "logIOActivities": false,
+        "showErrors": false,
+        "unitid": "1",
+        "dataType": "Coil",
+        "adr": "0",
+        "quantity": "7",
+        "rate": "2",
+        "rateUnit": "s",
+        "delayOnStart": false,
+        "startDelayTime": "",
+        "server": "bc8a8a02545c9154",
+        "useIOFile": false,
+        "ioFile": "",
+        "useIOForPayload": false,
+        "emptyMsgOnFail": false,
+        "x": 150,
+        "y": 280,
+        "wires": [
+            [
+                "381ba1224f455121"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "ebe314768d4514dd",
+        "type": "function",
+        "z": "08bebb73069e0e5d",
+        "name": "Message",
+        "func": "\nlet data = flow.get(\"data_1\")||{};\n// let token = \"xaID4mXDbBfcc1WPBlPnhrlIqvs12kYqiWqcL95KeXW\";\nlet token = \"xaID4mXDbBfcc1WPBlPnhrlIqvs12kYqiWqcL95KeXW\";\n\nmsg.headers =\n{\n    'Content-Type' : 'application/x-www-form-urlencoded',\n    'Authorization' : 'Bearer ' + token,\n}\nmsg.payload = \n{\n    \"message\" : msg.template\n}\nmsg.data = data;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 820,
+        "y": 260,
+        "wires": [
+            [
+                "5678cfe51da9a96c",
+                "3384dc7214d94df6"
+            ]
+        ]
+    },
+    {
+        "id": "5678cfe51da9a96c",
+        "type": "function",
+        "z": "08bebb73069e0e5d",
+        "name": "Message",
+        "func": "\nlet test_mode = flow.get(\"data_1\")[4];\n\nlet token = \"LEGL58ZkRlt4Qepq2zCO5dxLB0RtSbtZp4xEPdsU9A2\";\nfor (let i in msg.NewAlarm) {\n    if (msg.NewAlarm[i].label == \"Fire Pump Start\") {\n        if (test_mode == false) {\n            msg.headers =\n            {\n                'Content-Type': 'application/x-www-form-urlencoded',\n                'Authorization': 'Bearer ' + token,\n            }\n            msg.payload =\n            {\n                \"message\": msg.template\n            }\n\n            return msg;\n        }\n    }\n}\nfor (let i in msg.Stop) {\n    if (msg.Stop[i].label == \"Fire Pump Stop\") {\n        if (test_mode == false) {\n            msg.headers =\n            {\n                'Content-Type': 'application/x-www-form-urlencoded',\n                'Authorization': 'Bearer ' + token,\n            }\n            msg.payload =\n            {\n                \"message\": msg.template\n            }\n            return msg;\n        }\n    }\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1020,
+        "y": 260,
+        "wires": [
+            [
+                "3384dc7214d94df6"
+            ]
+        ]
+    },
+    {
+        "id": "3384dc7214d94df6",
+        "type": "http request",
+        "z": "08bebb73069e0e5d",
+        "name": "",
+        "method": "POST",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "https://notify-api.line.me/api/notify",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 1090,
+        "y": 180,
+        "wires": [
+            [
+                "c6d2714b7d1e7087"
+            ]
+        ]
+    },
+    {
+        "id": "c6d2714b7d1e7087",
+        "type": "switch",
+        "z": "08bebb73069e0e5d",
+        "name": "",
+        "property": "statusCode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "200",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 1250,
+        "y": 180,
+        "wires": [
+            [
+                "6817910564fa8b1f",
+                "c6f20693f2df0a56"
+            ]
+        ]
+    },
+    {
+        "id": "83b001289a82a9be",
+        "type": "cronplus",
+        "z": "08bebb73069e0e5d",
+        "name": "",
+        "outputField": "payload",
+        "timeZone": "",
+        "persistDynamic": false,
+        "commandResponseMsgOutput": "output1",
+        "outputs": 1,
+        "options": [
+            {
+                "name": "schedule1",
+                "topic": "schedule1",
+                "payloadType": "default",
+                "payload": "",
+                "expressionType": "cron",
+                "expression": "0 0 8 * * *",
+                "location": "",
+                "offset": "0",
+                "solarType": "all",
+                "solarEvents": "sunrise,sunset"
+            },
+            {
+                "name": "schedule2",
+                "topic": "schedule2",
+                "payloadType": "default",
+                "payload": "",
+                "expressionType": "cron",
+                "expression": "0 0 20 * * *",
+                "location": "",
+                "offset": "0",
+                "solarType": "all",
+                "solarEvents": "sunrise,sunset"
+            }
+        ],
+        "x": 340,
+        "y": 200,
+        "wires": [
+            [
+                "698876a9e62dcc66"
+            ]
+        ]
+    },
+    {
+        "id": "698876a9e62dcc66",
+        "type": "function",
+        "z": "08bebb73069e0e5d",
+        "name": "Alive",
+        "func": "let data_alive = flow.get(\"data_2\")[6] || {};\nlet Alive = {};\nlet mili = flow.get(\"mili\");\nvar timestamp = msg.payload.triggerTimestamp;\n\nif(data_alive == true){\n    Alive[\"6_2\"] = {\n        mili : mili,\n        state : data_alive,\n    };\n}\n\nif(Object.keys(Alive).length > 0){\n   var line = {\n        Alive : Object.values(Alive),\n        AliveShow : Object.values(Alive).length > 0 ? true : false,\n    }\n}\nreturn [line]",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 200,
+        "wires": [
+            [
+                "e5635bc9323feee8"
+            ]
+        ]
+    },
+    {
+        "id": "6817910564fa8b1f",
+        "type": "switch",
+        "z": "08bebb73069e0e5d",
+        "name": "",
+        "property": "Alive",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "nnull"
+            },
+            {
+                "t": "null"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1390,
+        "y": 180,
+        "wires": [
+            [
+                "108ce14ca83417b4"
+            ],
+            [
+                "11cedc035bd291f4"
+            ]
+        ]
+    },
+    {
+        "id": "11cedc035bd291f4",
+        "type": "function",
+        "z": "08bebb73069e0e5d",
+        "name": "Set Sent",
+        "func": "let Alarm = flow.get(\"Alarm\")||{}\nlet TimeAlarm = flow.get(\"TimeAlarm\");\nlet LastSend_Alarm = flow.get(\"LastSend_Alarm\")||{};\nlet mili = flow.get(\"mili\");\n\nfor(let i = 0; i < msg.NewAlarm.length; i++) {\n    let index = msg.NewAlarm[i].key + \"_\" + msg.NewAlarm[i].unitId;\n    if(!Alarm[index]) {\n        Alarm[index] = msg.NewAlarm[i];\n    }\n    if(LastSend_Alarm[`${msg.NewAlarm[i].unitId}_${msg.NewAlarm[i].key}`]){\n        LastSend_Alarm[`${msg.NewAlarm[i].unitId}_${msg.NewAlarm[i].key}`] = {\n            mili : LastSend_Alarm[`${msg.NewAlarm[i].unitId}_${msg.NewAlarm[i].key}`].mili,\n            unitId : msg.NewAlarm[i].unitId,\n        }\n    }\n    // if(LastSend_NewAlarm[`${msg.NewAlarm[i].unitId}_${nsg.NewAlarm[i].key}`]){\n    //     delete LastSend_NewAlarm[`${msg.NewAlarm[i].unitId}_${nsg.NewAlarm[i].key}`];\n    // }\n}\nfor(let i = 0; i < msg.Stop.length; i++) {\n    let index = msg.Stop[i].key + \"_\" + msg.Stop[i].unitId;\n    delete Alarm[index];\n}\nd = new Date();\nflow.set(\"LastSend\",d.getTime());\nflow.set(\"LastSend_Alarm\",LastSend_Alarm);\nflow.set(\"Alarm\",Alarm)",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1540,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "108ce14ca83417b4",
+        "type": "function",
+        "z": "08bebb73069e0e5d",
+        "name": "Last_Alive",
+        "func": "let mili = flow.get(\"mili\");\nlet alive = flow.get(\"alive\")||{};\nlet index_6 = `6_2`;\nalive[index_6] = {\n    mili : mili,\n    state : true,\n}\nflow.set(\"alive\",alive);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1550,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "eb3f206416deaef5",
+        "type": "function",
+        "z": "08bebb73069e0e5d",
+        "name": "Full version",
+        "func": "let data = msg.payload;\nlet alm = flow.get(\"Alarm\") || {};\nlet TimeAlarm = flow.get(\"TimeAlarm\" + msg.input.unitId) || {};\nlet LastSend = flow.get(\"LastSend\")||{};\n\n// DateTime\nvar d = new Date();\nvar DateTime = ('00' + d.getDate()).slice(-2) + \"-\" + ('00' + (d.getMonth() + 1)).slice(-2) + \"-\" + d.getFullYear() + \" \" + ('00' + d.getHours()).slice(-2) + \":\" + ('00' + d.getMinutes()).slice(-2);\n\n// Second now in flow\nlet mili = flow.get(\"mili\");\n\nlet repeat = false;\n\nlet Start = {};\nlet Active = {};\nlet Stop = {};\nlet Connected = {};\n\n/* Alarms */\nlet sitename = \"\";\nfor(let [key,value] of Object.entries(data)){\n    let keys = `${key}_${msg.input.unitId}`;\n    if(value != undefined){\n        if(value == 1 && !alm[keys]){\n            switch(key){\n                case \"0\":\n                    alm[keys] = {\n                        label : \"Fire Pump\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili\n                    }\n                    Start[keys] = {\n                        label : \"Fire Pump Start\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili,\n                    }\n                break;\n                case \"1\":\n                    alm[keys] = {\n                        label : \"Jocky Pump\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili\n                    }\n                    Start[keys] = {\n                        label : \"Jocky Pump Start\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili,\n                    }\n                break;\n                case \"2\":\n                    alm[keys] = {\n                        label : \"Low Level\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili\n                    }\n                    Start[keys] = {\n                        label : \"Low Level Start\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili,\n                    }\n                break;\n                case \"3\":\n                    alm[keys] = {\n                        label : \"Inter Lock System\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili\n                    }\n                    Start[keys] = {\n                        label : \"Inter Lock System Start\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili,\n                    }\n                break;\n                default:\n                break;\n            }\n        }\n\n        if(value == 0 && alm[keys]){\n            let dateTime = Date.now();\n            let sec = Math.floor(((dateTime - alm[keys].mili) / 1000))\n            let hour = String(sec >= 3600 ? Math.floor(sec / 3600) : 0)\n            let min = String(((sec%3600) >= 60) ? Math.floor((sec % 3600) / 60) : 0)\n            let second = String(Math.floor((sec % 3600)%60))\n            \n            switch(key){\n                case \"0\":\n                    Stop[keys] = {\n                        label : \"Fire Pump Stop\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili: `${hour.padStart(2,'0')}:${min.padStart(2,'0')}:${second.padStart(2,'0')}`\n                    }\n                break;\n                case \"1\":\n                    Stop[keys] = {\n                        label : \"Jocky Pump Stop\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili: `${hour.padStart(2,'0')}:${min.padStart(2,'0')}:${second.padStart(2,'0')}`\n                    }\n                break;\n                case \"2\":\n                    Stop[keys] = {\n                        label : \"Low Level Stop\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili: `${hour.padStart(2,'0')}:${min.padStart(2,'0')}:${second.padStart(2,'0')}`\n                    }\n                break;\n                case \"3\":\n                    Stop[keys] = {\n                        label : \"Inter Lock System Stop\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili: `${hour.padStart(2, '0')}:${min.padStart(2, '0')}:${second.padStart(2, '0')}`\n                    }\n                break;\n                default:\n                break;\n            }\n        }\n    }\n}\n/***************************/\n\n/*Check_Mode_Test*/\nlet test_mode = data[4];\nlet index_4 = `4_${msg.input.unitId}`;\nlet LastSend_Alarm = flow.get(\"LastSend_Alarm\")||{};\nlet count_testMode = flow.get(\"count_testMode\")||{};\n\nif(test_mode == true && !LastSend_Alarm[index_4]){\n    LastSend_Alarm[index_4] = {\n        mili : mili,\n        unitId : msg.input.unitId,\n    }\n    count_testMode[index_4] = {\n        unitId : msg.input.unitId,\n        mili : mili,\n        count : 0,\n    }\n    flow.set(\"LastSend_Alarm\",LastSend_Alarm);\n}\n\nif (test_mode == true && LastSend_Alarm[index_4]) {\n    let dateTime = new Date();\n    // let timestamp_before = LastSend_Alarm[index_4].mili;\n    \n    let sec = Math.floor(((dateTime - LastSend_Alarm[index_4].mili) / 1000));\n    var hour = sec >= 3600 ? Math.floor(sec / 3600) : 0;\n    let min = parseInt(((sec%3600) >= 60) ? Math.floor((sec % 3600) / 60) : 0);\n    let second = String(Math.floor((sec % 3600)%60));\n    \n    if(min >= 10 && !LastSend_Alarm[index_4]){\n        Active[index_4] = {\n            mili : mili,\n            unitId : msg.input.unitId,\n        };\n        count_testMode[index_4] = {\n            mili : mili,\n            count : 0,\n        };\n    }\n    \n    if(min >= 10 && LastSend_Alarm[index_4] && count_testMode[index_4]){\n        count_testMode[index_4].count++;\n        \n        if(count_testMode[index_4].count == 150){\n            Active[index_4] = {\n                mili : mili,\n                unitId : msg.input.unitId,\n            };\n        }\n        if(count_testMode[index_4].count > 150){\n            count_testMode[index_4].count = 0;\n        }\n    }\n    node.status({fill:\"blue\",shape:\"dot\",text: `${count_testMode[index_4].count}___${hour}:${min}:${second.padStart(2, '0')}`})\n}\n\nif(test_mode == false && count_testMode[index_4]){\n    count_testMode[index_4].count = 0;\n    delete LastSend_Alarm[index_4];\n    // delete count_testMode[index_4];\n}\nflow.set(\"count_testMode\",count_testMode);\nflow.get(\"LastSend_Alarm\",LastSend_Alarm);\n/***************************/\n\n/*Check Status Connected*/\nlet index_5 = `5_${msg.input.unitId}`;\nlet status_connect_mode = flow.get(\"connect_mode\")||{};\nlet data_connect_mode = data[5];\nif(data_connect_mode == true){\n    if(!status_connect_mode[index_5]){\n        Connected[index_5] = {\n            message : \"เชื่อมต่อ XJM60D สำเร็จ\",\n            mili : mili,\n            unitId : msg.input.unitId,\n            state : true,\n        }\n        status_connect_mode[index_5] = {\n            mili : mili,\n            unitId : msg.input.unitId,\n            state : true,\n        };\n    }\n}else{\n    if(status_connect_mode[index_5]){\n        delete status_connect_mode[index_5];\n    }\n}\nflow.set(\"connect_mode\",status_connect_mode);\n\n/**************************/\nflow.set(\"Alarm\",alm);\nif(Object.keys(Start).length > 0 || Object.keys(Active).length > 0 || Object.values(Stop).length > 0 || Object.keys(Connected).length > 0){\n    var line = {\n        Active : Object.values(Active),\n        ActiveShow : Object.values(Active).length > 0 ? true : false,\n\n        NewAlarm : Object.values(Start),\n        NewAlarmShow : Object.values(Start).length > 0 ? true : false,\n    \n        Stop : Object.values(Stop),\n        StopShow : Object.values(Stop).length > 0 ? true : false,\n        \n        NewConnected : Object.values(Connected),\n        NewConnectedShow : Object.values(Connected).length > 0 ? true : false,\n    }\n}\nreturn [line];",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "bb30b6589d0503b7",
+        "type": "function",
+        "z": "08bebb73069e0e5d",
+        "name": "",
+        "func": "let data = msg.payload;\nlet alm = flow.get(\"Alarm\") || {};\nlet TimeAlarm = flow.get(\"TimeAlarm\"+ msg.input.unitId) || {};\nlet LastSend = flow.get(\"LastSend\")||{};\n\n// DateTime\nvar d = new Date();\nvar DateTime = ('00' + d.getDate()).slice(-2) + \"-\" + ('00' + (d.getMonth() + 1)).slice(-2) + \"-\" + d.getFullYear() + \" \" + ('00' + d.getHours()).slice(-2) + \":\" + ('00' + d.getMinutes()).slice(-2);\n\n// Second now in flow\nlet mili = flow.get(\"mili\");\n\nlet repeat = false;\n\nlet Start = {};\nlet Active = {};\nlet Stop = {};\nlet Connected = {};\n\n/* Alarms */\nlet sitename = \"\";\nfor(let [key,value] of Object.entries(data)){\n    let keys = `${key}_${msg.input.unitId}`;\n    if(value != undefined){\n        if(value == 1 && !alm[keys]){\n            switch(key){\n                case \"0\":\n                    alm[keys] = {\n                        label : \"Fire Pump\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili\n                    }\n                    Start[keys] = {\n                        label : \"Fire Pump Start\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili,\n                    }\n                break;\n                case \"1\":\n                    alm[keys] = {\n                        label : \"Jocky Pump\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili\n                    }\n                    Start[keys] = {\n                        label : \"Jocky Pump Start\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili,\n                    }\n                break;\n                case \"2\":\n                    alm[keys] = {\n                        label : \"Low Level\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili\n                    }\n                    Start[keys] = {\n                        label : \"Low Level Start\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili,\n                    }\n                break;\n                case \"3\":\n                    alm[keys] = {\n                        label : \"Inter Lock System\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili\n                    }\n                    Start[keys] = {\n                        label : \"Inter Lock System Start\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili : TimeAlarm[`${key}_${msg.input.unitId}`].mili,\n                    }\n                break;\n                default:\n                break;\n            }\n        }\n\n        if(value == 0 && alm[keys]){\n            let dateTime = Date.now();\n            let sec = Math.floor(((dateTime - alm[keys].mili) / 1000))\n            let hour = String(sec >= 3600 ? Math.floor(sec / 3600) : 0)\n            let min = String(((sec%3600) >= 60) ? Math.floor((sec % 3600) / 60) : 0)\n            let second = String(Math.floor((sec % 3600)%60))\n            \n            switch(key){\n                case \"0\":\n                    Stop[keys] = {\n                        label : \"Fire Pump Stop\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili: `${hour.padStart(2,'0')}:${min.padStart(2,'0')}:${second.padStart(2,'0')}`\n                    }\n                break;\n                case \"1\":\n                    Stop[keys] = {\n                        label : \"Jocky Pump Stop\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili: `${hour.padStart(2,'0')}:${min.padStart(2,'0')}:${second.padStart(2,'0')}`\n                    }\n                break;\n                case \"2\":\n                    Stop[keys] = {\n                        label : \"Low Level Stop\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili: `${hour.padStart(2,'0')}:${min.padStart(2,'0')}:${second.padStart(2,'0')}`\n                    }\n                break;\n                case \"3\":\n                    Stop[keys] = {\n                        label : \"Inter Lock System Stop\",\n                        key : key,\n                        unitId : msg.input.unitId,\n                        datetime : TimeAlarm[`${key}_${msg.input.unitId}`].DateTime,\n                        mili: `${hour.padStart(2, '0')}:${min.padStart(2, '0')}:${second.padStart(2, '0')}`\n                    }\n                break;\n                default:\n                break;\n            }\n        }\n    }\n}\n/***************************/\n\n// /*Check_Mode_Test*/\n// let test_mode = data[4];\n// let index_4 = `4_${msg.input.unitId}`;\n// let LastSend_Alarm = flow.get(\"LastSend_Alarm\" + \"_\" + msg.input.unitId)||{};\n// let count_testMode = flow.get(\"count_testMode\" + \"_\" + msg.input.unitId)||{};\n// let new_date = new Date().getTime();\n\n// if(test_mode == true && !LastSend_Alarm[index_4]){\n//     LastSend_Alarm[index_4] = {\n//         mili : mili,\n//         unitId : msg.input.unitId,\n//     }\n//     flow.set(\"LastSend_Alarm\" + \"_\" + msg.input.unitId,LastSend_Alarm);\n// }\n\n// if (test_mode == true && LastSend_Alarm[index_4]) {\n//     let dateTime = new Date();\n//     // let timestamp_before = LastSend_Alarm[index_4].mili;\n//     //@ts-ignore\n//     let sec = Math.floor(((new Date() - LastSend_Alarm[index_4].mili) / 1000));\n//     var hour = String(sec >= 3600 ? Math.floor(sec / 3600) : 0);\n//     let min = parseInt(((sec%3600) >= 60) ? Math.floor((sec % 3600) / 60) : 0);\n//     let second = String(Math.floor((sec % 3600)%60));\n    \n//     //@ts-ignore\n//     if(hour >= 1 && !LastSend_Alarm[index_4]){\n//         Active[index_4] = {\n//             mili : mili,\n//             unitId : msg.input.unitId,\n//         };\n//         count_testMode[index_4] = {\n//             mili : mili,\n//             count : 0,\n//         };\n//     }\n//     // @ts-ignore\n//     if(hour >= 1 && LastSend_Alarm[index_4] && count_testMode[index_4]){\n//         count_testMode[index_4].count++;\n        \n//         if(count_testMode[index_4].count == 150){\n//             Active[index_4] = {\n//                 mili : mili,\n//                 unitId : msg.input.unitId,\n//             };\n//         }\n//         if(count_testMode[index_4].count > 150){\n//             count_testMode[index_4].count = 0;\n//         }\n//     }\n//     node.status({fill:\"blue\",shape:\"dot\",text: `${count_testMode[index_4].count}___${hour}:${min}:${second.padStart(2, '0')}`})\n// }\n\n// if(test_mode == false){\n//     count_testMode[index_4].count = 0;\n//     delete LastSend_Alarm[index_4];\n//     // delete count_testMode[index_4];\n// }\n// /***************************/\n\n// /*Check Status Connected*/\n// let index_5 = `5_${msg.input.unitId}`;\n// let status_connect_mode = flow.get(\"connect_mode\"+\"_\" +msg.input.unitId)||{};\n// let data_connect_mode = data[5];\n// if(data_connect_mode == true){\n//     if(!status_connect_mode[index_5]){\n//         Connected[index_5] = {\n//             message : \"เชื่อมต่อ XJM60D สำเร็จ\",\n//             mili : mili,\n//             unitId : msg.input.unitId,\n//             state : true,\n//         }\n//         status_connect_mode[index_5] = {\n//             mili : mili,\n//             unitId : msg.input.unitId,\n//             state : true,\n//         };\n//     }\n// }else{\n//     if(status_connect_mode[index_5]){\n//         delete status_connect_mode[index_5];\n//     }\n// }\n\n// // /**************************/\n// flow.set(\"connect_mode\" + \"_\" + msg.input.unitId,status_connect_mode);\n// flow.set(\"count_testMode\" + \"_\" + msg.input.unitId,count_testMode);\n// flow.get(\"LastSend_Alarm\" + \"_\" + msg.input.unitId,LastSend_Alarm);\nflow.set(\"Alarm\",alm);\nif(Object.keys(Start).length > 0 || Object.keys(Active).length > 0 || Object.values(Stop).length > 0 ){\n    var line = {\n        Active : Object.values(Active),\n        ActiveShow : Object.values(Active).length > 0 ? true : false,\n\n        NewAlarm : Object.values(Start),\n        NewAlarmShow : Object.values(Start).length > 0 ? true : false,\n    \n        Stop : Object.values(Stop),\n        StopShow : Object.values(Stop).length > 0 ? true : false,\n        \n        NewConnected : Object.values(Connected),\n        NewConnectedShow : Object.values(Connected).length > 0 ? true : false,\n    }\n}\nreturn [line];",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 360,
+        "wires": [
+            [
+                "e5635bc9323feee8",
+                "445d9a5f6bbbbb5a"
+            ]
+        ]
+    },
+    {
+        "id": "445d9a5f6bbbbb5a",
+        "type": "debug",
+        "z": "08bebb73069e0e5d",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 610,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "bc8a8a02545c9154",
+        "type": "modbus-client",
+        "name": "",
+        "clienttype": "tcp",
+        "bufferCommands": true,
+        "stateLogEnabled": false,
+        "queueLogEnabled": false,
+        "tcpHost": "127.0.0.1",
+        "tcpPort": "502",
+        "tcpType": "DEFAULT",
+        "serialPort": "/dev/ttyUSB",
+        "serialType": "RTU-BUFFERD",
+        "serialBaudrate": "9600",
+        "serialDatabits": "8",
+        "serialStopbits": "1",
+        "serialParity": "none",
+        "serialConnectionDelay": "100",
+        "serialAsciiResponseStartDelimiter": "0x3A",
+        "unit_id": "",
+        "commandDelay": "1",
+        "clientTimeout": "1000",
+        "reconnectOnTimeout": true,
+        "reconnectTimeout": "2000",
+        "parallelUnitIdsAllowed": true
+    }
+]
